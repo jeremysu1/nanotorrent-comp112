@@ -3,6 +3,7 @@ import requests
 import sys
 import random
 import socket
+import uu
 
 '''
 - Establish connection to tracker, get file list back /
@@ -17,6 +18,15 @@ import socket
 # TRACKER_URL = 'http://nanotorrent-comp112.herokuapp.com/'
 TRACKER_URL = 'http://localhost:5000'
 HOST_NAME = '127.0.0.1' # default 
+
+####################### AUXILARY FUNCTIONS ################################
+def parse_commandline(argv):
+    if (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
+        sys.stderr.write("Usage: python3 client1.py [mode]\n")
+        sys.stderr.write(" [mode] = u / d\n")
+        sys.stderr.write(" where u is for upload and d is for download\n")   
+    return argv[1]
+###########################################################################
 
 class Server:
     def __init__(self, host_name):
@@ -72,28 +82,34 @@ class Client:
     def __init__(self, tracker_url, host_name):
         self.dl_conns = 5 # max number of peers to download from
         self.my_files = {}
+        
         self.host_name = host_name
         self.tracker = tracker_url
         self.server = Server(self.host_name)
+        self.server.create_socket()
         self.port = self.server.get_port()
+
+
+    #########################################################################
+    #                    DOWNLOADING CLIENT FUNCTIONS                       #
+    #########################################################################
 
     def get_downloadable_file_list(self):
         ''' Queries the tracker and returns the list of
             files available to download'''
         resp = requests.get(self.tracker)
         data = resp.json()
+        self.file_list = data
         return list(data.keys())
 
     def get_filename_to_download(self):
         filenames = self.get_downloadable_file_list()
         os.system('clear') # clears the screen
 
-        print("Hello! These are the files available for download:")
-        print()
+        print("Hello! These are the files available for download:\n")
         for name in filenames:
             print(name)
-        print()
-        user_input = input("Pick a file to download: ")
+        user_input = input("\nPick a file to download: ")
 
         if self.filename_is_valid(user_input, filenames):
             return user_input
@@ -105,20 +121,41 @@ class Client:
             print("Invalid filename.")
             sys.exit()
 
-    def load_file_from_disk(self, filename):
-        f = open(filename, 'r')
-        self.my_files[file_name] = f.read()
-        f.close()
+    def download_file(self):
+        print(self.file_list)
 
+    #########################################################################
+    #                    UPLOADING CLIENT FUNCTIONS                         #
+    #########################################################################
+
+
+    def load_file_from_disk(self, filename):
+        os.system('rm temp.txt')
+        uu.encode(filename, "temp.txt") # for compatibility with all file types
+        with open("temp.txt") as f:
+            self.my_files[filename] = f.read()
+        
     def join_swarm(self, filename):
         params = {"filename":filename, "ip":self.host_name + ":" + str(self.port)}
-        print(self.tracker)
-        print(params)
         r = requests.post(self.tracker + "/join", data = params)
-        print(r.text)
+        print("Joined Swarm for {filename}".format(filename = filename))
+
+    def wait_for_request(self):
+        self.server.run()
 
 if __name__ == "__main__":
+    mode = parse_commandline(sys.argv)
     client = Client(TRACKER_URL, HOST_NAME)
-    filename = client.get_filename_to_download()
-    print(filename)
-    client.join_swarm(filename)
+
+    ''' if mode is u
+        then it loads a file from disk and then joins the swarm
+    '''
+    if mode == 'u':
+        # filename = input("Enter filename to upload: ")
+        filename = 'sec.mp4'
+        client.load_file_from_disk(filename)
+        client.join_swarm(filename)
+        client.wait_for_request()
+    else: # else it requests a download
+        filename = client.get_filename_to_download()
+        client.download_file()
