@@ -114,7 +114,7 @@ class Client:
         params = {"filename":filename, "ip":self.host_name + ":" + str(self.port)}
         print(self.tracker)
         print(params)
-        r = requests.post(self.tracker, data = params)
+        r = requests.post(self.tracker + "/join", data = params)
         print(r.text)
 
 if __name__ == "__main__":
