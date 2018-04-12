@@ -1,10 +1,14 @@
 
 var express = require('express');
+var bodyParser = require("body-parser");
 var app = express();
+
 
 app.set('port', (process.env.PORT || 5000));
 
 app.use(express.static(__dirname + '/public'));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 // views is directory for all template files
 app.set('views', __dirname + '/views');
@@ -12,16 +16,21 @@ app.set('view engine', 'ejs');
 
 
 var tracker = {};
-tracker.declaration = ["127.0.0.1:9000", "192.68.103.2:8000"];
-tracker.movie = ["130.64.155.2:3000"];
+tracker["shakespeare.txt"] = [];
+tracker["sherlock.txt"] = [];
+tracker["video.mp4"] = [];
+tracker["song.mp3"] = [];
+tracker["big.txt"] = [];
 
 app.get('/', function(request, response) {
   response.send(tracker);
 });
 
+// curl -H "Content-Type: application/json" -X POST -d '{"filename":"test.txt","ip":"130.64.155.2:3000"}'  localhost:5000/join
 app.post('/join', function (request, response) {
-  var client_ip = request.body;
-  response.send(request);
+	var data = request.body;
+  tracker[data.filename].push(data.ip);
+  response.send(tracker);
 })
 
 app.listen(app.get('port'), function() {
