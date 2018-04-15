@@ -1,9 +1,11 @@
 import os
 import requests
 import sys
-import random
 import socket
 import uu
+
+# our own modules
+from server import Server
 
 '''
 - Establish connection to tracker, get file list back /
@@ -28,54 +30,6 @@ def parse_commandline(argv):
     return argv[1]
 ###########################################################################
 
-class Server:
-    def __init__(self, host_name):
-        self.host_name = host_name
-        self.port = random.randint(9000,9100)
-        self.create_socket()
-
-    def get_port(self):
-        return self.port
-
-    def create_socket(self):
-        '''
-        creates a socket for the server and listens at the port
-        '''
-        # create socket
-        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # remove Address in Use error
-        self.serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        
-        # find a port number to bind to
-        while (True):
-            try:
-                print("Starting server on {host}:{port}".format(host=self.host_name, 
-                    port=self.port))
-                self.serversocket.bind((self.host_name, self.port))
-                print("Server started on port {port}.".format(port=self.port))
-                break
-            except Exception as e:
-                print("Error: Could not bind to port {port}, "
-                    "retrying now".format(port=self.port))
-                self.port = random.randint(9000,9100) # pick a new port number
-            
-        #listen
-        self.serversocket.listen(5) 
-
-    def run(self): # not called yet
-        # loop that keeps the server running
-        while True:
-            # establish a connection
-            clientsocket,addr = self.serversocket.accept()      
-            print("Got a connection from %s" % str(addr))
-            threading.Thread(target=self.handle_client, 
-                args=(clientsocket, addr)).start()
-
-    def handle_client(self, clientsocket, address):
-        """
-            Should be able to upload to the clientsocket
-        """
-        print("I'm supposed to be handling client requests!")
 
 
 class Client:
@@ -121,14 +75,40 @@ class Client:
             print("Invalid filename.")
             sys.exit()
 
-    def download_file(self):
-        print(self.file_list)
+    def download_file(self, filename):
+        ips = self.file_list[filename]
+        # TODO: get a mechanism to choose which IP to download
+        # from!
+        # For now just download from the first in the list
+        host = ips[0].split(":")[0]
+        port = int(ips[0].split(":")[1])
+        print(ips)
+        print(host)
+        print(port)
+
+        CRLF = "\r\n\r\n"
+        # create a socket object
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+        # remove Address in use error
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        sock.connect((host, port))         
+        msg = "GET / HTTP/1.0" + CRLF \
+                + "Filename: " + filename + CRLF \
+                + "Downloader: " + self.host_name \
+                + "Port: " + str(self.port) + CRLF + CRLF
+        sock.send(msg.encode('ascii'))
+        # Receive no more than 1024 bytes
+        msg = sock.recv(1024)                                     
+        sock.close()
+
+        with open("torrented.txt", 'w') as f:
+            f.write(msg)
+        
 
     #########################################################################
     #                    UPLOADING CLIENT FUNCTIONS                         #
     #########################################################################
-
-
     def load_file_from_disk(self, filename):
         os.system('rm temp.txt')
         uu.encode(filename, "temp.txt") # for compatibility with all file types
@@ -158,4 +138,4 @@ if __name__ == "__main__":
         client.wait_for_request()
     else: # else it requests a download
         filename = client.get_filename_to_download()
-        client.download_file()
+        client.download_file(filename)
