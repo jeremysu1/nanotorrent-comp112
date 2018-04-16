@@ -1,12 +1,22 @@
 import random
 import socket
 import threading
+import os
 
 class Server:
     def __init__(self, host_name):
         self.host_name = host_name
         self.port = random.randint(9000,9100)
         self.create_socket()
+
+        # make a directory to store seeding files
+        self.files_dir = 'server_files'
+        os.system('mkdir ' + self.files_dir)
+        # try:
+        #     os.system('rm -rf ' + self.files_dir)
+        #     os.system('mkdir ' + self.files_dir)
+        # except:
+        #     os.system('mkdir ' + self.files_dir)
 
     def get_port(self):
         return self.port
@@ -45,39 +55,40 @@ class Server:
             threading.Thread(target=self.handle_client, 
                 args=(clientsocket, addr)).start()
 
+    def utf8len(self, s):
+        ''' Returns the size of a string in bytes'''
+        return len(s.encode('utf-8'))
+
     def handle_client(self, clientsocket, address):
         """
             Should be able to upload to the clientsocket
         """
         print("I'm supposed to be handling client requests!")
-        # PACKET_SIZE = 1024
-        # cli_data = clientsocket.recv(PACKET_SIZE).decode() # Recieve data packet from client and decode
-        # # extract host info from client request
-        # host = cli_data.split("\nHost: ")[1].split("\nLine: ")[0]
-        # path = cli_data.split(" HTTP/1.1")[0].split("GET ")[1]
-        # key = host+path
+        PACKET_SIZE = 1024
+        CRLF = "\r\n"
+        cli_data = clientsocket.recv(PACKET_SIZE).decode() # Recieve data packet from client and decode
+        # extract host info from client request
+        print(cli_data)
 
-        # if (self.cache.cache_hit(key)):
-        #     resp = self.cache.get_page_from_cache(key)
-        # else:
-        #     try :
-        #         get_str = cli_data.replace('\n', '\r\n')
-        #         # connect to server
-        #         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        #         # s.settimeout(5)
-        #         s.connect((host, 80))
-        #         # sock.settimeout(None)
-        #         s.send(get_str.encode('ascii')) # send req to server
+        ''' Get the filename out, send it to the clientsocket '''
+        filename = cli_data.split('Filename: ')[1].split('Downloader: ')[0].split(CRLF)[0]
+
+        with open(  self.files_dir + "/" + filename + ".txt") as f:
+            resp = f.read()
+   
+        clientsocket.send(str(self.utf8len(resp)).encode('ascii')) # send msg len
+        self.send_msg(resp, self.utf8len(resp), clientsocket)
+        # clientsocket.send(resp.encode('ascii')) # send req to server
         #         resp = s.recv(1000000) # get response back
-        #         self.cache.put_in_cache(key,resp.decode('ascii'))
+        clientsocket.close()
 
-        #     except Exception as e:
-        #         resp = "Could not connect to server".encode('ascii')
+    def send_msg(self, resp, resp_len, clientsocket):
+        totalsent = 0
+        while totalsent < resp_len:
+            sent = clientsocket.send(resp[totalsent:].encode('ascii'))
+            if sent == 0:
+                raise RuntimeError("socket connection broken")
+            totalsent = totalsent + sent
 
-        # # send to client
-        # clientsocket.send(resp)
-        # clientsocket.close()
-        # s.close()
-        # print("\nCache hits so far: {h}".format(h=self.cache.get_cache_hits()))
+    
         

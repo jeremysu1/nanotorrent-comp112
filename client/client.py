@@ -33,15 +33,17 @@ def parse_commandline(argv):
 
 
 class Client:
+    ''' Stores loaded files in dir as txt files'''
     def __init__(self, tracker_url, host_name):
         self.dl_conns = 5 # max number of peers to download from
-        self.my_files = {}
-        
         self.host_name = host_name
         self.tracker = tracker_url
         self.server = Server(self.host_name)
         self.server.create_socket()
         self.port = self.server.get_port()
+        # make a directory to store seeding files
+        self.torr_dir = 'torrented'
+        os.system('mkdir ' + self.torr_dir)
 
 
     #########################################################################
@@ -82,38 +84,50 @@ class Client:
         # For now just download from the first in the list
         host = ips[0].split(":")[0]
         port = int(ips[0].split(":")[1])
-        print(ips)
-        print(host)
-        print(port)
 
-        CRLF = "\r\n\r\n"
+        CRLF = "\r\n"
         # create a socket object
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         # remove Address in use error
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         sock.connect((host, port))         
-        msg = "GET / HTTP/1.0" + CRLF \
+        msg = "GET / HTTP/1.1" + CRLF \
                 + "Filename: " + filename + CRLF \
-                + "Downloader: " + self.host_name \
+                + "Downloader: " + self.host_name + CRLF \
                 + "Port: " + str(self.port) + CRLF + CRLF
         sock.send(msg.encode('ascii'))
-        # Receive no more than 1024 bytes
-        msg = sock.recv(1024)                                     
+        
+        # recieve the number of bytes in file
+        file_len = int(sock.recv(1024).decode('ascii'))   
+        # recieve the actual file
+        file = self.myreceive(file_len, sock)
+        # msg = self.myreceive()                                 
         sock.close()
 
-        with open("torrented.txt", 'w') as f:
-            f.write(msg)
+        with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
+            f.write(file.decode('ascii'))
+
+        uu.decode(self.torr_dir + "/" + filename + ".txt", self.torr_dir + "/" + filename)
         
+    def myreceive(self, file_len, sock):
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < file_len:
+            chunk = sock.recv(min(file_len - bytes_recd, 2048))
+            if chunk == b'':
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b''.join(chunks)
 
     #########################################################################
     #                    UPLOADING CLIENT FUNCTIONS                         #
     #########################################################################
     def load_file_from_disk(self, filename):
-        os.system('rm temp.txt')
-        uu.encode(filename, "temp.txt") # for compatibility with all file types
-        with open("temp.txt") as f:
-            self.my_files[filename] = f.read()
+        ''' Opens a file and stores it in the server files directory
+            as a txt file '''
+        uu.encode(filename, self.server.files_dir + "/" + filename + ".txt") # for compatibility with all file types
         
     def join_swarm(self, filename):
         params = {"filename":filename, "ip":self.host_name + ":" + str(self.port)}
