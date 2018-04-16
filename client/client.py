@@ -98,19 +98,21 @@ class Client:
                 + "Port: " + str(self.port) + CRLF + CRLF
         sock.send(msg.encode('ascii'))
         
+        self.recieve_torrented_file(sock, filename)
+        sock.close()
+        
+    def recieve_torrented_file(self, sock, filename):
         # recieve the number of bytes in file
         file_len = int(sock.recv(1024).decode('ascii'))   
         # recieve the actual file
-        file = self.myreceive(file_len, sock)
-        # msg = self.myreceive()                                 
-        sock.close()
+        file = self.receive_msg(file_len, sock)                               
 
+        # store the file as a txt file and then decode it
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(file.decode('ascii'))
-
         uu.decode(self.torr_dir + "/" + filename + ".txt", self.torr_dir + "/" + filename)
-        
-    def myreceive(self, file_len, sock):
+
+    def receive_msg(self, file_len, sock):
         chunks = []
         bytes_recd = 0
         while bytes_recd < file_len:

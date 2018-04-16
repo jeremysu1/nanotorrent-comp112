@@ -63,24 +63,21 @@ class Server:
         """
             Should be able to upload to the clientsocket
         """
-        print("I'm supposed to be handling client requests!")
         PACKET_SIZE = 1024
         CRLF = "\r\n"
-        cli_data = clientsocket.recv(PACKET_SIZE).decode() # Recieve data packet from client and decode
-        # extract host info from client request
-        print(cli_data)
-
-        ''' Get the filename out, send it to the clientsocket '''
+        # Recieve request of file from client, extract filename
+        cli_data = clientsocket.recv(PACKET_SIZE).decode() 
         filename = cli_data.split('Filename: ')[1].split('Downloader: ')[0].split(CRLF)[0]
 
+        self.seed_file(filename, clientsocket)
+        clientsocket.close()
+
+    def seed_file(self, filename, clientsocket):
         with open(  self.files_dir + "/" + filename + ".txt") as f:
             resp = f.read()
    
         clientsocket.send(str(self.utf8len(resp)).encode('ascii')) # send msg len
         self.send_msg(resp, self.utf8len(resp), clientsocket)
-        # clientsocket.send(resp.encode('ascii')) # send req to server
-        #         resp = s.recv(1000000) # get response back
-        clientsocket.close()
 
     def send_msg(self, resp, resp_len, clientsocket):
         totalsent = 0
