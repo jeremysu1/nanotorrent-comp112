@@ -26,7 +26,8 @@ def parse_commandline(argv):
     if (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
         sys.stderr.write("Usage: python3 client1.py [mode]\n")
         sys.stderr.write(" [mode] = u / d\n")
-        sys.stderr.write(" where u is for upload and d is for download\n")   
+        sys.stderr.write(" where u is for upload and d is for download\n")
+        sys.exit(1);
     return argv[1]
 ###########################################################################
 

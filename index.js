@@ -16,11 +16,6 @@ app.set('view engine', 'ejs');
 
 
 var tracker = {};
-tracker["shakespeare.txt"] = [];
-tracker["sherlock.txt"] = [];
-tracker["video.mp4"] = [];
-tracker["song.mp3"] = [];
-tracker["big.txt"] = [];
 
 app.get('/', function(request, response) {
   response.send(tracker);
