@@ -3,9 +3,11 @@ import requests
 import sys
 import socket
 import uu
+import time
 
 # our own modules
 from server import Server
+import nano_stats as stats
 
 '''
 - Establish connection to tracker, get file list back /
@@ -27,6 +29,7 @@ def parse_commandline(argv):
         sys.stderr.write("Usage: python3 client1.py [mode]\n")
         sys.stderr.write(" [mode] = u / d\n")
         sys.stderr.write(" where u is for upload and d is for download\n")   
+        sys.exit()
     return argv[1]
 ###########################################################################
 
@@ -36,6 +39,7 @@ class Client:
     ''' Stores loaded files in dir as txt files'''
     def __init__(self, tracker_url, host_name):
         self.dl_conns = 5 # max number of peers to download from
+
         self.host_name = host_name
         self.tracker = tracker_url
         self.server = Server(self.host_name)
@@ -100,23 +104,54 @@ class Client:
         
         self.recieve_torrented_file(sock, filename)
         sock.close()
+
+        
         
     def recieve_torrented_file(self, sock, filename):
+        ''' Protocol to recieve file:
+            First recieve has only the size of the file in bytes
+            Second recieve onwards is the actual file chunks
+        '''
+
         # recieve the number of bytes in file
         file_len = int(sock.recv(1024).decode('ascii'))   
-        # recieve the actual file
+        # recieve the actual file as a bytes object
         file = self.receive_msg(file_len, sock)                               
 
         # store the file as a txt file and then decode it
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(file.decode('ascii'))
-        uu.decode(self.torr_dir + "/" + filename + ".txt", self.torr_dir + "/" + filename)
+        
+        uu.decode(self.torr_dir + "/" + filename + ".txt", 
+            self.torr_dir + "/" + filename)
 
     def receive_msg(self, file_len, sock):
+        ''' Recieves message from socket chunk by chunk and returns 
+            complete message as a bytes object'''
         chunks = []
         bytes_recd = 0
         while bytes_recd < file_len:
-            chunk = sock.recv(min(file_len - bytes_recd, 2048))
+            start = time.time()
+            chunk = sock.recv(min(file_len - bytes_recd, 8192))
+            end = time.time()
+
+            # print("End:")
+            # print(end)
+
+            # print("End - start")
+            # print(end-start)
+
+            # print("Chunk size")
+            # print(len(chunk))
+
+            sample_avg = len(chunk) / (end - start)
+            if len(chunks) == 0: # first calculation ever
+                moving_avg = sample_avg
+            else:
+                moving_avg = stats.ewma(sample_avg, moving_avg)
+            
+            print(moving_avg)
+
             if chunk == b'':
                 raise RuntimeError("socket connection broken")
             chunks.append(chunk)
