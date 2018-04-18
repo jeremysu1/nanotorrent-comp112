@@ -12,19 +12,13 @@ class Server:
         # make a directory to store seeding files
         self.files_dir = 'server_files'
         os.system('mkdir ' + self.files_dir)
-        # try:
-        #     os.system('rm -rf ' + self.files_dir)
-        #     os.system('mkdir ' + self.files_dir)
-        # except:
-        #     os.system('mkdir ' + self.files_dir)
 
     def get_port(self):
         return self.port
 
     def create_socket(self):
-        '''
-        creates a socket for the server and listens at the port
-        '''
+        ''' Creates a socket for the server and listens at the port'''
+
         # create socket
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # remove Address in Use error
@@ -46,22 +40,18 @@ class Server:
         #listen
         self.serversocket.listen(5) 
 
-    def run(self): # not called yet
-        # loop that keeps the server running
+    def run(self):
+        ''' Runs the server '''
         while True:
-            # establish a connection
+            # listen for incoming requests
             clientsocket,addr = self.serversocket.accept()      
             print("Got a connection from %s" % str(addr))
             threading.Thread(target=self.handle_client, 
                 args=(clientsocket, addr)).start()
 
-    def utf8len(self, s):
-        ''' Returns the size of a string in bytes'''
-        return len(s.encode('utf-8'))
-
     def handle_client(self, clientsocket, address):
         """
-            Should be able to upload to the clientsocket
+            Uploads file to clientsocket
         """
         PACKET_SIZE = 1024
         CRLF = "\r\n"
@@ -87,5 +77,7 @@ class Server:
                 raise RuntimeError("socket connection broken")
             totalsent = totalsent + sent
 
-    
+    def utf8len(self, s):
+        ''' Returns the size of a string in bytes'''
+        return len(s.encode('utf-8'))
         
