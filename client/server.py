@@ -4,6 +4,7 @@ import threading
 import os
 import struct
 import uu
+import time
 
 from chunkHandler import ChunkHandler
 
@@ -26,6 +27,10 @@ class Server:
     #########################################################################
     #                    UPLOADING SERVER FUNCTIONS                         #
     #########################################################################
+    def set_sleep_time(self, time):
+        ''' Sleep time before every packet seed.
+            The time will be divided by 1000'''
+        self.sleep_time = time/1000
 
     def create_seed_socket(self):
         ''' Creates a socket for the server and listens at the port'''
@@ -101,7 +106,11 @@ class Server:
         return length
 
     def seed_file(self, ch, total_chunks, sock):
+        sleep_time = self.sleep_time
+        
         for i in range(total_chunks):
+            # if odd, turn this on
+            time.sleep(sleep_time)
             req = sock.recv(4)
             if (len(req) == 0):
                 break

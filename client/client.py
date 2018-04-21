@@ -9,29 +9,28 @@ import time
 from server import Server
 import nano_stats as stats
 
-
-'''
-- Establish connection to tracker, get file list back /
-- Pick randomly 5 from swarm /
-- Set up connections with each five clients
-- Calculate the throughputs
-- Rank the 5 based on their throughput
-- Periodically get new list from tracker
-- Optimistically explore
-'''
-
 # TRACKER_URL = 'http://nanotorrent-comp112.herokuapp.com/'
 TRACKER_URL = 'http://localhost:5000'
 HOST_NAME = '127.0.0.1' # default 
 
 ####################### AUXILARY FUNCTIONS ################################
 def parse_commandline(argv):
-    if (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
-        sys.stderr.write("Usage: python3 client1.py [mode]\n")
-        sys.stderr.write(" [mode] = u / d\n")
-        sys.stderr.write(" where u is for upload and d is for download\n")   
-        sys.exit()
-    return argv[1]
+    # Todo: This does not completely type check
+    if (len(argv) == 3 and argv[1] == 'u'):
+        return argv[1], int(argv[2])
+    elif (len(argv) == 2 and argv[1] == 'u'):
+        err()
+    elif (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
+        err() 
+    
+    return argv[1], 0
+
+def err():
+    sys.stderr.write("Usage: python3 client1.py u [speed]\n")
+    sys.stderr.write("             OR\n")
+    sys.stderr.write("Usage: python3 client1.py d\n")
+    sys.stderr.write(" where u is for upload and d is for download\n")   
+    sys.exit()
 ###########################################################################
 
 class Client:
@@ -97,7 +96,7 @@ class Client:
         self.server.run()
 
 if __name__ == "__main__":
-    mode = parse_commandline(sys.argv)
+    mode, limiting_speed = parse_commandline(sys.argv)
     client = Client(TRACKER_URL, HOST_NAME)
 
     ''' if mode is u
@@ -106,6 +105,7 @@ if __name__ == "__main__":
     if mode == 'u':
         # filename = input("Enter filename to upload: ")
         filename = 'sec.mp4'
+        client.server.set_sleep_time(limiting_speed)
         client.load_file_from_disk(filename)
         client.join_swarm(filename)
         client.wait_for_request()
