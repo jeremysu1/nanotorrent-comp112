@@ -9,6 +9,7 @@ import time
 from server import Server
 import nano_stats as stats
 
+
 '''
 - Establish connection to tracker, get file list back /
 - Pick randomly 5 from swarm /
@@ -33,33 +34,27 @@ def parse_commandline(argv):
     return argv[1]
 ###########################################################################
 
-
-
 class Client:
     ''' Stores loaded files in dir as txt files'''
     def __init__(self, tracker_url, host_name):
         self.dl_conns = 5 # max number of peers to download from
-
         self.host_name = host_name
         self.tracker = tracker_url
-        self.server = Server(self.host_name)
-        self.server.create_socket()
+
+        # every node needs to be a serve to get an ip & port number
+        self.server = Server(self.host_name) # start upload server
         self.port = self.server.get_port()
-        # make a directory to store seeding files
-        self.torr_dir = 'torrented'
-        os.system('mkdir ' + self.torr_dir)
-
-
+        
     #########################################################################
     #                    DOWNLOADING CLIENT FUNCTIONS                       #
     #########################################################################
-
+    
     def get_downloadable_file_list(self):
         ''' Queries the tracker and returns the list of
             files available to download'''
         resp = requests.get(self.tracker)
         data = resp.json()
-        self.file_list = data
+        self.file_list = data # json {filename : [ip:port, ip:port...]}
         return list(data.keys())
 
     def get_filename_to_download(self):
@@ -83,81 +78,8 @@ class Client:
 
     def download_file(self, filename):
         ips = self.file_list[filename]
-        # TODO: get a mechanism to choose which IP to download
-        # from!
-        # For now just download from the first in the list
-        host = ips[0].split(":")[0]
-        port = int(ips[0].split(":")[1])
-
-        CRLF = "\r\n"
-        # create a socket object
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-        # remove Address in use error
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        sock.connect((host, port))         
-        msg = "GET / HTTP/1.1" + CRLF \
-                + "Filename: " + filename + CRLF \
-                + "Downloader: " + self.host_name + CRLF \
-                + "Port: " + str(self.port) + CRLF + CRLF
-        sock.send(msg.encode('ascii'))
+        self.server.download_file(filename, ips)
         
-        self.recieve_torrented_file(sock, filename)
-        sock.close()
-
-        
-        
-    def recieve_torrented_file(self, sock, filename):
-        ''' Protocol to recieve file:
-            First recieve has only the size of the file in bytes
-            Second recieve onwards is the actual file chunks
-        '''
-
-        # recieve the number of bytes in file
-        file_len = int(sock.recv(1024).decode('ascii'))   
-        # recieve the actual file as a bytes object
-        file = self.receive_msg(file_len, sock)                               
-
-        # store the file as a txt file and then decode it
-        with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
-            f.write(file.decode('ascii'))
-        
-        uu.decode(self.torr_dir + "/" + filename + ".txt", 
-            self.torr_dir + "/" + filename)
-
-    def receive_msg(self, file_len, sock):
-        ''' Recieves message from socket chunk by chunk and returns 
-            complete message as a bytes object'''
-        chunks = []
-        bytes_recd = 0
-        while bytes_recd < file_len:
-            start = time.time()
-            chunk = sock.recv(min(file_len - bytes_recd, 8192))
-            end = time.time()
-
-            # print("End:")
-            # print(end)
-
-            # print("End - start")
-            # print(end-start)
-
-            # print("Chunk size")
-            # print(len(chunk))
-
-            sample_avg = len(chunk) / (end - start)
-            if len(chunks) == 0: # first calculation ever
-                moving_avg = sample_avg
-            else:
-                moving_avg = stats.ewma(sample_avg, moving_avg)
-            
-            print(moving_avg)
-
-            if chunk == b'':
-                raise RuntimeError("socket connection broken")
-            chunks.append(chunk)
-            bytes_recd = bytes_recd + len(chunk)
-        return b''.join(chunks)
-
     #########################################################################
     #                    UPLOADING CLIENT FUNCTIONS                         #
     #########################################################################
@@ -190,3 +112,4 @@ if __name__ == "__main__":
     else: # else it requests a download
         filename = client.get_filename_to_download()
         client.download_file(filename)
+
