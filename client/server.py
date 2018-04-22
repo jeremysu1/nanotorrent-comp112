@@ -132,19 +132,34 @@ class Server:
         # make a directory to store seeding files
         self.torr_dir = 'torrented'
         os.system('mkdir ' + self.torr_dir)
+        self.num_active_conns = 0
+        self.start_download = False
 
     def download_file(self, filename, ips):
+        ''' For each ip that the filename is connected to,
+            start a new connection '''
         self.download_setup()
-        # TODO: get a mechanism to choose which IP to download
-        # from!
-        # For now just download from the first in the list
         ch = ChunkHandler() 
+        self.total_ips = len(ips)
 
         for i in range(len(ips)):
             host = ips[i].split(":")[0]
             port = int(ips[i].split(":")[1])
             threading.Thread(target=self.set_peer_conn, 
                 args=(host, port, filename, ch)).start()
+
+        # start another thread to make rarest chunk priority queue
+        print("down low")
+        threading.Thread(target=self.build_rarest_pq, 
+                args=(ch,)).start()
+
+    def build_rarest_pq(self, ch):
+        while (True):
+            if self.num_active_conns == self.total_ips:
+                ch.rarest_priority_q()
+                self.start_download = True
+                print("Priority queue built!")
+                break
 
     def set_peer_conn(self, host, port, filename, ch):
         ''' ch: download chunk handler object '''
@@ -156,24 +171,27 @@ class Server:
 
         self.send_file_req(filename, sock)  
         chunk_ids = self.receive_chunk_ids(sock, ch)
+        ch.all_conn_chunks += chunk_ids # for rare chunk calculations
+        self.num_active_conns += 1
 
-        # add each chunk to the download list and map
-        for id in chunk_ids:
-            chunk = self.request_chunk(int(id), sock, ch)
-            print("Received chunk: {id}".format(id = id))
-            ch.dl_chunk_map[int(id)] = chunk
-            ch.dl_chunk_ids.append(int(id))
+        if (self.start_download): # all conns have been queried
+            # add each chunk to the download list and map
+            for id in chunk_ids:
+                chunk = self.request_chunk(id, sock, ch)
+                # print("Received chunk: {id}".format(id = str(id)))
+                ch.dl_chunk_map[id] = chunk
+                ch.dl_chunk_ids.append(id)
 
-        # if download is complete, save file as a txt file and then decode it
-        if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
-            final_file = ch.stitch_chunks()
-            with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
-                f.write(final_file)
-            uu.decode(self.torr_dir + "/" + filename + ".txt", 
-                self.torr_dir + "/" + filename)
+            # if download is complete, save file as a txt file and then decode it
+            if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
+                final_file = ch.stitch_chunks()
+                with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
+                    f.write(final_file)
+                uu.decode(self.torr_dir + "/" + filename + ".txt", 
+                    self.torr_dir + "/" + filename)
 
-        print(len(ch.dl_chunk_ids)) 
-        print(ch.total_num_chunks)
+            print(len(ch.dl_chunk_ids)) 
+            print(ch.total_num_chunks)
 
         sock.close()
 
@@ -189,7 +207,7 @@ class Server:
 
     def request_chunk(self, id, sock, ch):        
         # send request for chunk
-        print("Requesting chunk: {id}".format(id = id))
+        # print("Requesting chunk: {id}".format(id = id))
         msg = struct.pack('>I', id)
         sock.send(msg)
         # get chunk back
@@ -208,4 +226,5 @@ class Server:
 
         ch.total_num_chunks = total_chunks
         chunk_list = sock.recv(num_bytes).decode('ascii').split('-')
+        chunk_list = [int(chunk) for chunk in chunk_list]
         return chunk_list

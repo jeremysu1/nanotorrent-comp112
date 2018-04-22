@@ -1,4 +1,8 @@
 import random
+import operator
+import heapq
+from collections import Counter
+
 CHUNKSIZE = 8192
 
 class ChunkHandler:
@@ -9,6 +13,9 @@ class ChunkHandler:
         self.dl_chunk_ids = [] # contains downloading chunk ids
         self.dl_chunk_map = {} # id : chunk
         self.dl_total_num_chunks = 0
+
+        # helper variables to calculate rarest chunks
+        self.all_conn_chunks = [] # contains chunk ids from all conns
 
     def get_chunk_size(self):
         return self.chunkSize
@@ -27,6 +34,14 @@ class ChunkHandler:
         return "".join(chunks)
 
     # UPLOADER FUNCTIONS
+    def rarest_priority_q(self):
+        count_dict = dict(Counter(self.all_conn_chunks))    
+        # make priority queue with rarest chunk at the top
+        h = []
+        for chunk_id in count_dict.keys():
+            heapq.heappush(h, (count_dict[chunk_id], chunk_id))
+        self.rarest_heap = h
+
     def get_chunk(self, index):
         if index >= self.get_num_up_chunks():
             sys.stderr.write("Chunk index out of range\n")
