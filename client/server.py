@@ -146,18 +146,6 @@ class Server:
             threading.Thread(target=self.set_peer_conn, 
                 args=(host, port, filename, ch)).start()
 
-        # host1 = ips[0].split(":")[0]
-        # port1 = int(ips[0].split(":")[1])
-
-        # host2 = ips[1].split(":")[0]
-        # port2 = int(ips[1].split(":")[1])  
-
-        # threading.Thread(target=self.set_peer_conn, 
-        #         args=(host1, port1, filename, ch)).start()
-
-        # threading.Thread(target=self.set_peer_conn, 
-        #         args=(host2, port2, filename, ch)).start()
-
     def set_peer_conn(self, host, port, filename, ch):
         ''' ch: download chunk handler object '''
         
