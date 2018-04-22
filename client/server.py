@@ -93,7 +93,6 @@ class Server:
         
         ch.split_file_to_chunks(self.files_dir + "/" + filename + ".txt")
 
-
         # multiplying by 1000 to avoid roundoff to 0
         if (self.sleep_time*1000) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
@@ -141,23 +140,23 @@ class Server:
         # For now just download from the first in the list
         ch = ChunkHandler() 
 
-        # for i in range(len(ips)):
-        #     host = ips[i].split(":")[0]
-        #     port = int(ips[i].split(":")[1])
-        #     threading.Thread(target=self.set_peer_conn, 
-        #         args=(host, port, filename, ch)).start()
+        for i in range(len(ips)):
+            host = ips[i].split(":")[0]
+            port = int(ips[i].split(":")[1])
+            threading.Thread(target=self.set_peer_conn, 
+                args=(host, port, filename, ch)).start()
 
-        host1 = ips[0].split(":")[0]
-        port1 = int(ips[0].split(":")[1])
+        # host1 = ips[0].split(":")[0]
+        # port1 = int(ips[0].split(":")[1])
 
-        host2 = ips[1].split(":")[0]
-        port2 = int(ips[1].split(":")[1])  
+        # host2 = ips[1].split(":")[0]
+        # port2 = int(ips[1].split(":")[1])  
 
-        threading.Thread(target=self.set_peer_conn, 
-                args=(host1, port1, filename, ch)).start()
+        # threading.Thread(target=self.set_peer_conn, 
+        #         args=(host1, port1, filename, ch)).start()
 
-        threading.Thread(target=self.set_peer_conn, 
-                args=(host2, port2, filename, ch)).start()
+        # threading.Thread(target=self.set_peer_conn, 
+        #         args=(host2, port2, filename, ch)).start()
 
     def set_peer_conn(self, host, port, filename, ch):
         ''' ch: download chunk handler object '''
