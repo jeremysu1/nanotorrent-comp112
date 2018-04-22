@@ -92,8 +92,12 @@ class Server:
                 3. list as a string '''
         
         ch.split_file_to_chunks(self.files_dir + "/" + filename + ".txt")
-        num_bytes, data = ch.get_chunk_ids_odd()
-    
+
+        if self.sleep_time % 2 == 0:
+            num_bytes, data = ch.get_chunk_ids_odd()
+        else:
+            num_bytes, data = ch.get_chunk_ids_even()
+            
         # send total number in complete file
         length = ch.get_num_up_chunks()
         encoded_length = struct.pack('>I', length)
@@ -107,10 +111,9 @@ class Server:
 
     def seed_file(self, ch, total_chunks, sock):
         sleep_time = self.sleep_time
-        
+
         for i in range(total_chunks):
-            # if odd, turn this on
-            time.sleep(sleep_time)
+            time.sleep(sleep_time) # rate-limiting!!!
             req = sock.recv(4)
             if (len(req) == 0):
                 break
