@@ -93,11 +93,15 @@ class Server:
         
         ch.split_file_to_chunks(self.files_dir + "/" + filename + ".txt")
 
-        if self.sleep_time % 2 == 0:
-            num_bytes, data = ch.get_chunk_ids_odd()
-        else:
+
+        # multiplying by 1000 to avoid roundoff to 0
+        if (self.sleep_time*1000) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
-            
+            print("Seeding evens")
+        else:
+            num_bytes, data = ch.get_chunk_ids_odd()
+            print("Seeding odds")
+
         # send total number in complete file
         length = ch.get_num_up_chunks()
         encoded_length = struct.pack('>I', length)
@@ -135,14 +139,19 @@ class Server:
         # TODO: get a mechanism to choose which IP to download
         # from!
         # For now just download from the first in the list
-        print(ips)
+        ch = ChunkHandler() 
+
+        # for i in range(len(ips)):
+        #     host = ips[i].split(":")[0]
+        #     port = int(ips[i].split(":")[1])
+        #     threading.Thread(target=self.set_peer_conn, 
+        #         args=(host, port, filename, ch)).start()
+
         host1 = ips[0].split(":")[0]
         port1 = int(ips[0].split(":")[1])
 
         host2 = ips[1].split(":")[0]
         port2 = int(ips[1].split(":")[1])  
-
-        ch = ChunkHandler()  
 
         threading.Thread(target=self.set_peer_conn, 
                 args=(host1, port1, filename, ch)).start()
@@ -175,7 +184,6 @@ class Server:
                 f.write(final_file)
             uu.decode(self.torr_dir + "/" + filename + ".txt", 
                 self.torr_dir + "/" + filename)
-
 
         print(len(ch.dl_chunk_ids)) 
         print(ch.total_num_chunks)
