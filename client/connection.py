@@ -16,6 +16,9 @@ class Connection(threading.Thread):
         self.filename = filename;
         self.chunk_size = chunk_size
         self.host_name = host_name
+        self.total_chunks = -1
+        self.chunk_ids = []
+        self.done = False
         self.StopEvent = threading.Event()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         
@@ -26,7 +29,9 @@ class Connection(threading.Thread):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.connect((self.host, self.port))
 
-        self.send_file_req(self.filename, self.sock)  
+        self.send_file_req(self.filename, self.sock)
+        self.receive_chunk_ids()
+        self.done = True
         while not self.stopped():
             continue
 
@@ -54,6 +59,24 @@ class Connection(threading.Thread):
                 + "Downloader: " + self.host_name + CRLF \
                 + "Port: " + str(self.port) + CRLF + CRLF
         sock.send(msg.encode('ascii'))
+
+    def receive_chunk_ids(self):
+        ''' Recieves the total number of chunks in the file,
+            the total number of bytes in the chunk-list string
+            and then the chunk-list string. Parses the
+            chunk-list and returns a list of chunk-ids '''
+        total_chunks = self.sock.recv(4)
+        total_chunks = struct.unpack('>I', total_chunks[:4])[0]
+
+        num_bytes = self.sock.recv(4)
+        num_bytes = struct.unpack('>I', num_bytes[:4])[0]
+
+        chunk_list = self.sock.recv(num_bytes).decode('ascii').split('-')
+        chunk_list = [int(chunk) for chunk in chunk_list]
+
+        self.total_chunks = total_chunks
+        self.chunk_ids = chunk_list
+        #return total_chunks, chunk_list
 
     def stop(self):
         """Signals the event that this thread is looping on to stop and closes

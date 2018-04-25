@@ -5,6 +5,7 @@ import os
 import struct
 import uu
 import time
+import heapq
 
 from chunkHandler import ChunkHandler
 from connection import Connection
@@ -152,53 +153,89 @@ class Server:
             #threading.Thread(target=self.set_peer_conn, 
             #    args=(host, port, filename, ch)).start()
 
-        # start each connection
+        
         for ip in connections:
             connections[ip].start()
             self.num_active_conns += 1
 
+        # makes sure each connection is ready
+        for ip in connections:
+            while connections[ip].done == False:
+                pass
 
         # CODE TO REQUEST A CHUNK FROM A CONNECTION THREAD
         # peer 1 - even chunks
         # peer 2 - odd chunks
 
         # WITHOUT THROTTLE - 4min 30s
+        # WITH THROTTLE - 4min 40s
+        # SUPER THROTTLE /10 - 35min 54s
 
-        chunk_ids = self.receive_chunk_ids(connections[ips[0]].sock, ch)
+        # wait until the first connection is done getting its chunk id list
+        #total_chunks = -1
+        #while total_chunks == -1:
+        #    total_chunks = connections[ips[0]].total_chunks
+        total_chunks = connections[ips[0]].total_chunks
 
+        # for each connection, create the priority queue of chunks
+        ch.total_num_chunks = total_chunks
+        for ip in connections:
+            chunk_ids = connections[ip].chunk_ids
+            ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
+        ch.rarest_priority_q()
 
-        ch.all_conn_chunks += chunk_ids # for rare chunk calculations
+        print("total number of chunks is {total}".format(total=total_chunks))
+        
+        while len(ch.rarest_heap) != 0:
+            id = ch.next_id()[1]
+            for ip in connections:
+                if id in connections[ip].chunk_ids:
+                    print("trying to get chunk {id}".format(id=id))
+                    chunk = connections[ip].request_chunk(id)
+                    ch.dl_chunk_map[id] = chunk
+                    ch.dl_chunk_ids.append(id)
+        # get odds
+
+        '''
+        chunk_ids = connections[ips[0]].chunk_ids
         print("size of chunks is {len}".format(len=len(chunk_ids)))
         for id in chunk_ids:
-            #print("trying to get chunk {id}".format(id=id))
+            print("trying to get chunk {id}".format(id=id))
             chunk = connections[ips[0]].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
 
-        print("GETTING ODDS NOW")
-        chunk_ids = self.receive_chunk_ids(connections[ips[1]].sock, ch)
-        #print("size of chunks is {len}".format(len=len(chunk_ids)))
+        # get evens
+        print("GETTING EVENS NOW")
+        chunk_ids = connections[ips[1]].chunk_ids
         for id in chunk_ids:
-            #print("trying to get chunk {id}".format(id=id))
+            print("trying to get chunk {id}".format(id=id))
             chunk = connections[ips[1]].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
-
+        '''
             #print("Received chunk: {id}".format(id = str(id)))
         print("Should have gotten all chunks")            
 
         # if download is complete, save file as a txt file and then decode it
+        #start = time.time()
+        for ip in connections:
+            connections[ip].stop()
+        print("{dl}, {total}".format(dl=len(ch.dl_chunk_ids), total=ch.total_num_chunks))
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
+            print("writing file")
             final_file = ch.stitch_chunks()
             with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
                 f.write(final_file)
             uu.decode(self.torr_dir + "/" + filename + ".txt", 
                 self.torr_dir + "/" + filename)
 
+        #end = time.time()
+        #print("it took {time} to stitch".format(time=end-start))
+
 
         # tell each connection thread to stop and close the socket
-        for ip in connections:
-            connections[ip].stop()
+
 
         # start another thread to make rarest chunk priority queue
         print("down low")
@@ -280,4 +317,4 @@ class Server:
         ch.total_num_chunks = total_chunks
         chunk_list = sock.recv(num_bytes).decode('ascii').split('-')
         chunk_list = [int(chunk) for chunk in chunk_list]
-        return chunk_list
+        return total_chunks, chunk_list

@@ -1,6 +1,7 @@
 import random
 import operator
 import heapq
+import sys
 from collections import Counter
 
 CHUNKSIZE = 8192
@@ -41,6 +42,9 @@ class ChunkHandler:
         for chunk_id in count_dict.keys():
             heapq.heappush(h, (count_dict[chunk_id], chunk_id))
         self.rarest_heap = h
+
+    def next_id(self):
+        return heapq.heappop(self.rarest_heap)
 
     def get_chunk(self, index):
         if index >= self.get_num_up_chunks():
