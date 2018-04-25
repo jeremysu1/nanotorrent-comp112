@@ -171,29 +171,26 @@ class Server:
         # WITH THROTTLE - 4min 40s
         # SUPER THROTTLE /10 - 35min 54s
 
-        # wait until the first connection is done getting its chunk id list
-        #total_chunks = -1
-        #while total_chunks == -1:
-        #    total_chunks = connections[ips[0]].total_chunks
         total_chunks = connections[ips[0]].total_chunks
+        ch.total_num_chunks = total_chunks
 
         # for each connection, create the priority queue of chunks
-        ch.total_num_chunks = total_chunks
         for ip in connections:
             chunk_ids = connections[ip].chunk_ids
             ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
         ch.rarest_priority_q()
-
+        print("pq is {pq}".format(pq=ch.rarest_heap))
         print("total number of chunks is {total}".format(total=total_chunks))
         
         while len(ch.rarest_heap) != 0:
-            id = ch.next_id()[1]
+            id = ch.next_id()
             for ip in connections:
                 if id in connections[ip].chunk_ids:
                     print("trying to get chunk {id}".format(id=id))
                     chunk = connections[ip].request_chunk(id)
                     ch.dl_chunk_map[id] = chunk
                     ch.dl_chunk_ids.append(id)
+                    break
         # get odds
 
         '''
@@ -214,14 +211,14 @@ class Server:
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
         '''
-            #print("Received chunk: {id}".format(id = str(id)))
-        print("Should have gotten all chunks")            
+            #print("Received chunk: {id}".format(id = str(id)))        
 
-        # if download is complete, save file as a txt file and then decode it
-        #start = time.time()
+        # stop all connections because all the chunks were downloaded
         for ip in connections:
             connections[ip].stop()
-        print("{dl}, {total}".format(dl=len(ch.dl_chunk_ids), total=ch.total_num_chunks))
+        print("downloaded {dl} chunks, expected {total} chunks".format(dl=len(ch.dl_chunk_ids), total=ch.total_num_chunks))
+
+        # if download is complete, save file as a txt file and then decode it
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
             print("writing file")
             final_file = ch.stitch_chunks()

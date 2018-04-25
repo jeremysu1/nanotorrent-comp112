@@ -44,7 +44,8 @@ class ChunkHandler:
         self.rarest_heap = h
 
     def next_id(self):
-        return heapq.heappop(self.rarest_heap)
+        next = heapq.heappop(self.rarest_heap)
+        return next[1]
 
     def get_chunk(self, index):
         if index >= self.get_num_up_chunks():
@@ -73,7 +74,7 @@ class ChunkHandler:
             '''  
         chunk_list = []
         num_chunks = self.get_num_up_chunks()
-        for i in range(0, num_chunks, 2):
+        for i in range(0, num_chunks, 1):
             chunk_list.append(str(i))
 
         # Delimiter '-'
