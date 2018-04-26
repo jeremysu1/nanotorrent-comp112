@@ -149,11 +149,10 @@ class Server:
         for i in range(len(ips)):
             host = ips[i].split(":")[0]
             port = int(ips[i].split(":")[1])
-            connections[ips[i]] = Connection(host, port, filename, ch.get_chunk_size(), self.host_name)
-            #threading.Thread(target=self.set_peer_conn, 
-            #    args=(host, port, filename, ch)).start()
+            connections[ips[i]] = Connection(host, port, filename, 
+                ch.get_chunk_size(), self.host_name)
 
-        
+        # start each connection
         for ip in connections:
             connections[ip].start()
             self.num_active_conns += 1
@@ -162,10 +161,6 @@ class Server:
         for ip in connections:
             while connections[ip].done == False:
                 pass
-
-        # CODE TO REQUEST A CHUNK FROM A CONNECTION THREAD
-        # peer 1 - even chunks
-        # peer 2 - odd chunks
 
         # WITHOUT THROTTLE - 4min 30s
         # WITH THROTTLE - 4min 40s
@@ -178,45 +173,52 @@ class Server:
         for ip in connections:
             chunk_ids = connections[ip].chunk_ids
             ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
+        
         ch.rarest_priority_q()
         print("pq is {pq}".format(pq=ch.rarest_heap))
         print("total number of chunks is {total}".format(total=total_chunks))
         
+        # create the dict that maps chunk to list of ips having the chunk
+        print("All conn chunks:")
+        all_chunks = set(ch.all_conn_chunks)
+        chunk_owners = {}
+        for chunk in all_chunks:
+            chunk_owners[chunk] = []
+            for ip in connections:
+                if chunk in connections[ip].chunk_ids:
+                    chunk_owners[chunk].append(ip)
+        print(chunk_owners)
+
+
         while len(ch.rarest_heap) != 0:
             id = ch.next_id()
-            for ip in connections:
-                if id in connections[ip].chunk_ids:
-                    print("trying to get chunk {id}".format(id=id))
-                    chunk = connections[ip].request_chunk(id)
-                    ch.dl_chunk_map[id] = chunk
-                    ch.dl_chunk_ids.append(id)
-                    break
-        # get odds
+            owners = chunk_owners[id]
+            
+            fastest_conn = connections[owners[0]].conn_time
+            fastest_owner = owners[0]
+            for owner in owners:
+                if fastest_conn > connections[owner].conn_time:
+                    fastest_conn = connections[owner].conn_time
+                    fastest_owner = owner
 
-        '''
-        chunk_ids = connections[ips[0]].chunk_ids
-        print("size of chunks is {len}".format(len=len(chunk_ids)))
-        for id in chunk_ids:
-            print("trying to get chunk {id}".format(id=id))
-            chunk = connections[ips[0]].request_chunk(id)
+            print("trying to get chunk {id} from {conn} who has conn_time {time}".format(id=id, conn= fastest_owner, time=connections[owner].conn_time))
+            chunk = connections[fastest_owner].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
-
-        # get evens
-        print("GETTING EVENS NOW")
-        chunk_ids = connections[ips[1]].chunk_ids
-        for id in chunk_ids:
-            print("trying to get chunk {id}".format(id=id))
-            chunk = connections[ips[1]].request_chunk(id)
-            ch.dl_chunk_map[id] = chunk
-            ch.dl_chunk_ids.append(id)
-        '''
-            #print("Received chunk: {id}".format(id = str(id)))        
+            # for ip in connections: # currently just looking at the first one
+            #     if id in connections[ip].chunk_ids:
+            #         print("trying to get chunk {id}".format(id=id))
+            #         chunk = connections[ip].request_chunk(id)
+            #         ch.dl_chunk_map[id] = chunk
+            #         ch.dl_chunk_ids.append(id)
+            #         break    
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
+            print("Connection time of {ip} is {time}".format(ip = ip, time = connections[ip].conn_time))
             connections[ip].stop()
-        print("downloaded {dl} chunks, expected {total} chunks".format(dl=len(ch.dl_chunk_ids), total=ch.total_num_chunks))
+        print("downloaded {dl} chunks, expected {total} chunks".format(dl=len(ch.dl_chunk_ids), 
+                                                                        total=ch.total_num_chunks))
 
         # if download is complete, save file as a txt file and then decode it
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
@@ -227,91 +229,4 @@ class Server:
             uu.decode(self.torr_dir + "/" + filename + ".txt", 
                 self.torr_dir + "/" + filename)
 
-        #end = time.time()
-        #print("it took {time} to stitch".format(time=end-start))
 
-
-        # tell each connection thread to stop and close the socket
-
-
-        # start another thread to make rarest chunk priority queue
-        print("down low")
-        #threading.Thread(target=self.build_rarest_pq, 
-         #       args=(ch,)).start()
-
-    def build_rarest_pq(self, ch):
-        while (True):
-            if self.num_active_conns == self.total_ips:
-                ch.rarest_priority_q()
-                self.start_download = True
-                print("Priority queue built!")
-                break
-
-    def set_peer_conn(self, host, port, filename, ch):
-        ''' ch: download chunk handler object '''
-        
-        # create a socket object, remove Address in use error
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        sock.connect((host, port))         
-
-        self.send_file_req(filename, sock)  
-        chunk_ids = self.receive_chunk_ids(sock, ch)
-        ch.all_conn_chunks += chunk_ids # for rare chunk calculations
-        self.num_active_conns += 1
-
-        if (self.start_download): # all conns have been queried
-            # add each chunk to the download list and map
-            for id in chunk_ids:
-                chunk = self.request_chunk(id, sock, ch)
-                #print("Received chunk: {id}".format(id = str(id)))
-                ch.dl_chunk_map[id] = chunk
-                ch.dl_chunk_ids.append(id)
-
-            # if download is complete, save file as a txt file and then decode it
-            if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
-                final_file = ch.stitch_chunks()
-                with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
-                    f.write(final_file)
-                uu.decode(self.torr_dir + "/" + filename + ".txt", 
-                    self.torr_dir + "/" + filename)
-
-            print(len(ch.dl_chunk_ids)) 
-            print(ch.total_num_chunks)
-
-        sock.close()
-
-    def send_file_req(self, filename, sock):
-        ''' Sends initial request to seeder about the file
-            we want to download'''
-        CRLF = "\r\n"
-        msg = "GET / HTTP/1.1" + CRLF \
-                + "Filename: " + filename + CRLF \
-                + "Downloader: " + self.host_name + CRLF \
-                + "Port: " + str(self.port) + CRLF + CRLF
-        sock.send(msg.encode('ascii'))
-
-    def request_chunk(self, id, sock, ch):        
-        # send request for chunk
-        # print("Requesting chunk: {id}".format(id = id))
-        msg = struct.pack('>I', id)
-        sock.send(msg)
-        # get chunk back
-        return sock.recv(ch.get_chunk_size()).decode('ascii')
-
-    def receive_chunk_ids(self, sock, ch):
-        ''' Recieves the total number of chunks in the file,
-            the total number of bytes in the chunk-list string
-            and then the chunk-list string. Parses the
-            chunk-list and returns a list of chunk-ids '''
-        total_chunks = sock.recv(4)
-        total_chunks = struct.unpack('>I', total_chunks[:4])[0]
-
-        num_bytes = sock.recv(4)
-        num_bytes = struct.unpack('>I', num_bytes[:4])[0]
-
-        ch.total_num_chunks = total_chunks
-        chunk_list = sock.recv(num_bytes).decode('ascii').split('-')
-        chunk_list = [int(chunk) for chunk in chunk_list]
-        return total_chunks, chunk_list

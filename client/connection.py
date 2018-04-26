@@ -1,5 +1,3 @@
-
-
 import random
 import socket
 import threading
@@ -7,6 +5,10 @@ import os
 import struct
 import uu
 import time
+
+# our own stats module
+import nano_stats as stats
+
 
 class Connection(threading.Thread):
     def __init__(self, host, port, filename, chunk_size, host_name):
@@ -21,6 +23,8 @@ class Connection(threading.Thread):
         self.done = False
         self.StopEvent = threading.Event()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+
+        self.conn_time = 0 # to calculate the bandwidth
         
 
 
@@ -32,6 +36,7 @@ class Connection(threading.Thread):
         self.send_file_req(self.filename, self.sock)
         self.receive_chunk_ids()
         self.done = True
+        
         while not self.stopped():
             continue
 
@@ -43,12 +48,18 @@ class Connection(threading.Thread):
 
 
     def request_chunk(self, id):        
-        # send request for chunk
+        
         # print("Requesting chunk: {id}".format(id = id))
         msg = struct.pack('>I', id)
-        self.sock.send(msg)
-        # get chunk back
-        return self.sock.recv(self.chunk_size).decode('ascii')
+
+        start = time.time()
+        self.sock.send(msg) # send request for chunk
+        resp = self.sock.recv(self.chunk_size).decode('ascii') # get chunk
+        end = time.time()
+
+        self.conn_time = stats.ewma(end - start, self.conn_time)
+
+        return resp
 
     def send_file_req(self, filename, sock):
         ''' Sends initial request to seeder about the file
