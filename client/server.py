@@ -12,6 +12,7 @@ from connection import Connection
 
 # globals
 CHUNKSIZE = 8192
+DIVISOR = 100
     
 class Server:
     def __init__(self, host_name):
@@ -22,6 +23,7 @@ class Server:
         self.files_dir = 'server_files'
         os.system('mkdir ' + self.files_dir)
         self.create_seed_socket()
+        self.divisor = DIVISOR
 
     def get_port(self):
         return self.port
@@ -32,7 +34,7 @@ class Server:
     def set_sleep_time(self, time):
         ''' Sleep time before every packet seed.
             The time will be divided by 1000'''
-        self.sleep_time = time/1000
+        self.sleep_time = time/self.divisor
 
     def create_seed_socket(self):
         ''' Creates a socket for the server and listens at the port'''
@@ -96,7 +98,7 @@ class Server:
         ch.split_file_to_chunks(self.files_dir + "/" + filename + ".txt")
 
         # multiplying by 1000 to avoid roundoff to 0
-        if (self.sleep_time*1000) % 2 == 0:
+        if (self.sleep_time*self.divisor) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
             print("Seeding evens")
         else:
@@ -118,7 +120,7 @@ class Server:
         sleep_time = self.sleep_time
 
         for i in range(total_chunks):
-            #time.sleep(sleep_time) # rate-limiting!!!
+            time.sleep(sleep_time) # rate-limiting!!!
             req = sock.recv(4)
             if (len(req) == 0):
                 break
@@ -151,20 +153,18 @@ class Server:
             port = int(ips[i].split(":")[1])
             connections[ips[i]] = Connection(host, port, filename, 
                 ch.get_chunk_size(), self.host_name)
+            connections[ips[i]].start()
+            self.num_active_conns += 1
 
         # start each connection
-        for ip in connections:
-            connections[ip].start()
-            self.num_active_conns += 1
+        # for ip in connections:
+            
+            
 
         # makes sure each connection is ready
         for ip in connections:
             while connections[ip].done == False:
                 pass
-
-        # WITHOUT THROTTLE - 4min 30s
-        # WITH THROTTLE - 4min 40s
-        # SUPER THROTTLE /10 - 35min 54s
 
         total_chunks = connections[ips[0]].total_chunks
         ch.total_num_chunks = total_chunks
@@ -205,13 +205,6 @@ class Server:
             chunk = connections[fastest_owner].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
-            # for ip in connections: # currently just looking at the first one
-            #     if id in connections[ip].chunk_ids:
-            #         print("trying to get chunk {id}".format(id=id))
-            #         chunk = connections[ip].request_chunk(id)
-            #         ch.dl_chunk_map[id] = chunk
-            #         ch.dl_chunk_ids.append(id)
-            #         break    
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
@@ -222,11 +215,12 @@ class Server:
 
         # if download is complete, save file as a txt file and then decode it
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
-            print("writing file")
-            final_file = ch.stitch_chunks()
-            with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
-                f.write(final_file)
-            uu.decode(self.torr_dir + "/" + filename + ".txt", 
-                self.torr_dir + "/" + filename)
+            self.write_file(ch, filename)
 
-
+    def write_file(self, ch, filename):
+        print("writing file")
+        final_file = ch.stitch_chunks()
+        with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
+            f.write(final_file)
+        uu.decode(self.torr_dir + "/" + filename + ".txt", 
+            self.torr_dir + "/" + filename)
