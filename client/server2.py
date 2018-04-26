@@ -102,10 +102,10 @@ class Server2:
 
         # multiplying by 1000 to avoid roundoff to 0
 
-        print("sleep time is {time}".format(time=self.sleep_time))
+        #print("sleep time is {time}".format(time=self.sleep_time))
         if self.sleep_time == 0:
             num_bytes, data = ch.get_chunk_ids_fast()
-        elif self.sleep_time*self.divisor == 5:
+        elif self.sleep_time*self.divisor == 10:
             num_bytes, data = ch.get_chunk_ids_slow()
         elif (self.sleep_time*self.divisor) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
@@ -128,7 +128,7 @@ class Server2:
     def seed_file(self, ch, total_chunks, sock):
         global chunks_sent
         sleep_time = self.sleep_time
-        #print("Sleeping for {time}s between each chunk".format(time=sleep_time))
+        print("Sleeping for {time}s between each chunk".format(time=sleep_time))
         for i in range(total_chunks):
             time.sleep(sleep_time) # rate-limiting!!!
             req = sock.recv(4)
@@ -137,7 +137,8 @@ class Server2:
             
             if sleep_time == 0:
                 if chunks_sent >= 88:
-                    sleep_time = 7/self.divisor
+                    sleep_time = 20/self.divisor
+                    print("Now sleeping for {time}s between each chunk".format(time=sleep_time))
                     #print("new sleep time is {time}".format(time=sleep_time))
                 else:
                     chunks_sent += 1

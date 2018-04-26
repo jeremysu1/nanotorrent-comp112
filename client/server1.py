@@ -6,6 +6,7 @@ import struct
 import uu
 import time
 import heapq
+import sys
 
 from chunkHandler import ChunkHandler
 from connection import Connection
@@ -13,6 +14,7 @@ from connection import Connection
 # globals
 CHUNKSIZE = 8192
 DIVISOR = 100
+VIZ_LOCK = threading.Lock()
     
 class Server1:
     def __init__(self, host_name):
@@ -191,6 +193,10 @@ class Server1:
                     chunk_owners[chunk].append(ip)
         #print(chunk_owners)
 
+        downloaded_from = {}
+        for ip in connections:
+            downloaded_from[ip] = []
+
 
         while len(ch.rarest_heap) != 0:
             id = ch.next_id()
@@ -203,10 +209,12 @@ class Server1:
                     fastest_conn = connections[owner].conn_time
                     fastest_owner = owner
 
-            print("Requesting chunk {id} from {conn}".format(id=id, conn= fastest_owner))
+            #print("Requesting chunk {id} from {conn}".format(id=id, conn= fastest_owner))
+            downloaded_from[fastest_owner].append(id)
             chunk = connections[fastest_owner].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
+            self.viz(ch, connections, downloaded_from, ips)
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
@@ -226,3 +234,57 @@ class Server1:
             f.write(final_file)
         uu.decode(self.torr_dir + "/" + filename + ".txt", 
             self.torr_dir + "/" + filename)
+
+    def viz(self, ch, connections, downloaded_from, ips):
+        peer_chunks = []
+        ip1 = ips[0]
+        ip2 = ips[1]
+        for ip in connections:
+            peer_chunks.append(connections[ip].chunk_ids)
+
+        RED   = "\033[1;31m" 
+        BLUE  = "\033[1;34m"
+        WHITE = "\033[1;37m"
+
+        global VIZ_LOCK
+        VIZ_LOCK.acquire()
+        time.sleep(0.08)
+        os.system('clear') # clears the screen        
+        print("Chunk availabilities:")
+        print("Peer 1: ")
+        print("Avg chunk retrieval time: {s}".format(s=connections[ip1].conn_time))
+        for i in range(ch.total_num_chunks):
+            if i in peer_chunks[0]:
+                sys.stdout.write(RED)
+                print('*', end="")
+            else:
+                sys.stdout.write(WHITE)
+                print('_', end="")
+
+        sys.stdout.write(WHITE)
+        print("\n\nPeer 2: ")
+        print("Avg chunk retrieval time: {s}".format(s=connections[ip2].conn_time))
+        for i in range(ch.total_num_chunks):
+            if i in peer_chunks[1]:
+                sys.stdout.write(BLUE)
+                print('*', end="")
+            else:
+                sys.stdout.write(WHITE)
+                print('_', end="")
+
+        sys.stdout.write(WHITE)
+        print("\n\nDownloaded: ")
+        for i in range(ch.total_num_chunks):
+            if i in ch.dl_chunk_ids:
+                if i in downloaded_from[ip1]:
+                    sys.stdout.write(RED)
+                else:
+                    sys.stdout.write(BLUE)
+                sys.stdout.write('*')
+            else:
+                sys.stdout.write(WHITE)
+                sys.stdout.write('_')
+        print("\n")
+        sys.stdout.write(WHITE)
+        VIZ_LOCK.release()
+
