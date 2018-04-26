@@ -230,7 +230,7 @@ class Server2:
             #print("received chunk {id}".format(id=id))
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
-            self.viz(ch, connections, downloaded_from, ips)
+            self.viz(ch, connections, downloaded_from, ips, id)
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
@@ -252,7 +252,7 @@ class Server2:
         os.system("rm {file}".format(file = self.torr_dir + "/" + filename + ".txt"))
         print('Download complete!')
 
-    def viz(self, ch, connections, downloaded_from, ips):
+    def viz(self, ch, connections, downloaded_from, ips, curr_chunk):
         peer_chunks = []
         ip1 = ips[0]
         ip2 = ips[1]
@@ -303,4 +303,5 @@ class Server2:
                 sys.stdout.write('_')
         print("\n")
         sys.stdout.write(WHITE)
+        print("Downloading chunk id: {id}".format(id=curr_chunk))
         VIZ_LOCK.release()
