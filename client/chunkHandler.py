@@ -6,6 +6,7 @@ from collections import Counter
 
 CHUNKSIZE = 8192
 
+
 class ChunkHandler:
     def __init__(self):
         self.chunkSize = CHUNKSIZE # in bytes
@@ -14,7 +15,7 @@ class ChunkHandler:
         self.dl_chunk_ids = [] # contains downloading chunk ids
         self.dl_chunk_map = {} # id : chunk
         self.dl_total_num_chunks = 0
-
+        self.total_num_chunks = 352
         # helper variables to calculate rarest chunks
         self.all_conn_chunks = [] # contains chunk ids from all conns
 
@@ -86,10 +87,43 @@ class ChunkHandler:
             * A list of chunk ids available to seed
               as a string delimted by '-' eg. 1-45-67-22 
             * Length of the string  
-            ''' 
+            '''  
         chunk_list = []
         num_chunks = self.get_num_up_chunks()
         for i in range(1, num_chunks, 2):
+            chunk_list.append(str(i))
+
+        # Delimiter '-'
+        data = "-".join(chunk_list)
+        return len(data), data
+
+
+    def get_chunk_ids_fast(self):
+        ''' Returns: 
+            * A list of chunk ids available to seed
+              as a string delimted by '-' eg. 1-45-67-22 
+            * Length of the string  
+            '''  
+        chunk_list = []
+        num_chunks = self.get_num_up_chunks()
+        for i in range(0, 88):
+            chunk_list.append(str(i))
+        for i in range(176, 352):
+            chunk_list.append(str(i))
+
+        # Delimiter '-'
+        data = "-".join(chunk_list)
+        return len(data), data
+
+    def get_chunk_ids_slow(self):
+        ''' Returns: 
+            * A list of chunk ids available to seed
+              as a string delimted by '-' eg. 1-45-67-22 
+            * Length of the string  
+            ''' 
+        chunk_list = []
+        num_chunks = self.get_num_up_chunks()
+        for i in range(88, 352):
             chunk_list.append(str(i))
 
         data = "-".join(chunk_list)

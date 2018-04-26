@@ -14,7 +14,7 @@ from connection import Connection
 CHUNKSIZE = 8192
 DIVISOR = 100
     
-class Server:
+class Server1:
     def __init__(self, host_name):
         self.host_name = host_name
         self.port = random.randint(9000, 9100)
@@ -81,7 +81,7 @@ class Server:
         cli_data = sock.recv(PACKET_SIZE).decode() 
         if (cli_data[:6] == "GET / "):
             filename = cli_data.split('Filename: ')[1].split('Downloader: ')[0].split(CRLF)[0]
-            print("Got a GET request for {file}".format(file=filename))
+            print("Got a connection request for {file}".format(file=filename))
 
             total_chunks = self.send_chunk_list(ch, filename, sock)
             self.seed_file(ch, total_chunks, sock)
@@ -100,7 +100,7 @@ class Server:
         # multiplying by 1000 to avoid roundoff to 0
         if (self.sleep_time*self.divisor) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
-            print("Seeding evens")
+            print("Seeding every chunk")
         else:
             num_bytes, data = ch.get_chunk_ids_odd()
             print("Seeding odds")
@@ -118,7 +118,7 @@ class Server:
 
     def seed_file(self, ch, total_chunks, sock):
         sleep_time = self.sleep_time
-        print("Sleeping for {time}s between each chunk".format(time=sleep_time))
+        #print("Sleeping for {time}s between each chunk".format(time=sleep_time))
         for i in range(total_chunks):
             time.sleep(sleep_time) # rate-limiting!!!
             req = sock.recv(4)
@@ -166,6 +166,8 @@ class Server:
             while connections[ip].done == False:
                 pass
 
+
+
         total_chunks = connections[ips[0]].total_chunks
         ch.total_num_chunks = total_chunks
 
@@ -175,11 +177,11 @@ class Server:
             ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
         
         ch.rarest_priority_q()
-        print("pq is {pq}".format(pq=ch.rarest_heap))
-        print("total number of chunks is {total}".format(total=total_chunks))
+        #print("pq is {pq}".format(pq=ch.rarest_heap))
+        #print("total number of chunks is {total}".format(total=total_chunks))
         
         # create the dict that maps chunk to list of ips having the chunk
-        print("All conn chunks:")
+        #print("All conn chunks:")
         all_chunks = set(ch.all_conn_chunks)
         chunk_owners = {}
         for chunk in all_chunks:
@@ -187,7 +189,7 @@ class Server:
             for ip in connections:
                 if chunk in connections[ip].chunk_ids:
                     chunk_owners[chunk].append(ip)
-        print(chunk_owners)
+        #print(chunk_owners)
 
 
         while len(ch.rarest_heap) != 0:
@@ -201,24 +203,24 @@ class Server:
                     fastest_conn = connections[owner].conn_time
                     fastest_owner = owner
 
-            print("trying to get chunk {id} from {conn} who has conn_time {time}".format(id=id, conn= fastest_owner, time=connections[owner].conn_time))
+            print("Requesting chunk {id} from {conn}".format(id=id, conn= fastest_owner))
             chunk = connections[fastest_owner].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
-            print("Connection time of {ip} is {time}".format(ip = ip, time = connections[ip].conn_time))
+            #print("Connection time of {ip} is {time}".format(ip = ip, time = connections[ip].conn_time))
             connections[ip].stop()
-        print("downloaded {dl} chunks, expected {total} chunks".format(dl=len(ch.dl_chunk_ids), 
-                                                                        total=ch.total_num_chunks))
+       # print("downloaded {dl} chunks, expected {total} chunks".format(dl=len(ch.dl_chunk_ids), 
+        #                                                                total=ch.total_num_chunks))
 
         # if download is complete, save file as a txt file and then decode it
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
             self.write_file(ch, filename)
 
     def write_file(self, ch, filename):
-        print("writing file")
+        print("Writing file")
         final_file = ch.stitch_chunks()
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(final_file)

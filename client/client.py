@@ -7,21 +7,30 @@ import time
 
 # our own modules
 from server import Server
+from server1 import Server1
+from server2 import Server2
 import nano_stats as stats
 
 # TRACKER_URL = 'http://nanotorrent-comp112.herokuapp.com/'
 TRACKER_URL = 'http://localhost:5000'
 HOST_NAME = '127.0.0.1' # default 
+demo = 0
 
 ####################### AUXILARY FUNCTIONS ################################
 def parse_commandline(argv):
+    global demo
     # Todo: This does not completely type check
-    if (len(argv) == 3 and argv[1] == 'u'):
+    if (len(argv) == 3 and argv[1] == 'd'):
+        demo = int(argv[2])
+        return argv[1], 0
+    elif (len(argv) == 4 and argv[1] == 'u'):
+        demo = int(argv[3])
         return argv[1], int(argv[2])
-    elif (len(argv) == 2 and argv[1] == 'u'):
-        err()
-    elif (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
-        err() 
+    elif (len(argv) == 3 and argv[1] == 'u'):
+        return argv[1], int(argv[2])
+
+    #elif (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
+    #    err() 
     
     return argv[1], 0
 
@@ -41,8 +50,18 @@ class Client:
         self.tracker = tracker_url
 
         # every node needs to be a serve to get an ip & port number
-        self.server = Server(self.host_name) # start upload server
-        self.port = self.server.get_port()
+        if demo == 0:
+            print("Normal Mode")
+            self.server = Server(self.host_name) # start upload server
+            self.port = self.server.get_port()
+        elif demo == 1:
+            print("Demo 1")
+            self.server = Server1(self.host_name) # start upload server
+            self.port = self.server.get_port()
+        elif demo == 2:
+            print("Demo 2")
+            self.server = Server2(self.host_name) # start upload server
+            self.port = self.server.get_port()
         
     #########################################################################
     #                    DOWNLOADING CLIENT FUNCTIONS                       #
