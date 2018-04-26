@@ -25,7 +25,7 @@ class Connection(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 
         self.conn_time = 0 # to calculate the bandwidth
-        
+        self.first_req_ever = True
 
 
 
@@ -57,7 +57,11 @@ class Connection(threading.Thread):
         resp = self.sock.recv(self.chunk_size).decode('ascii') # get chunk
         end = time.time()
 
-        self.conn_time = stats.ewma(end - start, self.conn_time)
+        if (self.first_req_ever):
+            self.conn_time = end - start
+            self.first_req_ever = False
+        else:
+            self.conn_time = stats.ewma(end - start, self.conn_time)
 
         return resp
 

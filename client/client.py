@@ -104,7 +104,7 @@ if __name__ == "__main__":
     '''
     if mode == 'u':
         # filename = input("Enter filename to upload: ")
-        filename = 'sec.mp4'
+        filename = 'cat.mp4'
         client.server.set_sleep_time(limiting_speed)
         client.load_file_from_disk(filename)
         client.join_swarm(filename)
