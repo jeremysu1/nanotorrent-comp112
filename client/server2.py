@@ -105,7 +105,7 @@ class Server2:
         #print("sleep time is {time}".format(time=self.sleep_time))
         if self.sleep_time == 0:
             num_bytes, data = ch.get_chunk_ids_fast()
-        elif self.sleep_time*self.divisor == 10:
+        elif self.sleep_time*self.divisor == 20:
             num_bytes, data = ch.get_chunk_ids_slow()
         elif (self.sleep_time*self.divisor) % 2 == 0:
             num_bytes, data = ch.get_chunk_ids_even()
@@ -134,16 +134,14 @@ class Server2:
             req = sock.recv(4)
 
             # rate limit when 86 chunks have been sent
-            
             if sleep_time == 0:
                 if chunks_sent >= 88:
-                    sleep_time = 20/self.divisor
+                    sleep_time = 30/self.divisor
                     print("Now sleeping for {time}s between each chunk".format(time=sleep_time))
                     #print("new sleep time is {time}".format(time=sleep_time))
                 else:
                     chunks_sent += 1
                     #print("chunks sent is {sent}".format(sent=chunks_sent))
-        
 
             if (len(req) == 0):
                 break
@@ -262,34 +260,36 @@ class Server2:
         RED   = "\033[1;31m" 
         BLUE  = "\033[1;34m"
         WHITE = "\033[1;37m"
+        GREEN = "\033[0;32m"
 
         global VIZ_LOCK
         VIZ_LOCK.acquire()
         time.sleep(0.08)
         os.system('clear') # clears the screen        
+        sys.stdout.write(GREEN)
         print("Chunk availabilities:")
-        print("Peer 1: ")
+        print("Peer A: Medium speed throughout")
         print("Avg chunk retrieval time: {s}".format(s=connections[ip1].conn_time))
         for i in range(ch.total_num_chunks):
             if i in peer_chunks[0]:
                 sys.stdout.write(RED)
                 print('*', end="")
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 print('_', end="")
 
-        sys.stdout.write(WHITE)
-        print("\n\nPeer 2: ")
+        sys.stdout.write(GREEN)
+        print("\n\nPeer B: Fast, then slow ")
         print("Avg chunk retrieval time: {s}".format(s=connections[ip2].conn_time))
         for i in range(ch.total_num_chunks):
             if i in peer_chunks[1]:
                 sys.stdout.write(BLUE)
                 print('*', end="")
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 print('_', end="")
 
-        sys.stdout.write(WHITE)
+        sys.stdout.write(GREEN)
         print("\n\nDownloaded: ")
         for i in range(ch.total_num_chunks):
             if i in ch.dl_chunk_ids:
@@ -299,9 +299,9 @@ class Server2:
                     sys.stdout.write(BLUE)
                 sys.stdout.write('*')
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 sys.stdout.write('_')
         print("\n")
-        sys.stdout.write(WHITE)
+        sys.stdout.write(GREEN)
         print("Downloading chunk id: {id}".format(id=curr_chunk))
         VIZ_LOCK.release()
