@@ -45,20 +45,6 @@ app.post('/join', function (request, response) {
   response.send(tracker);
 })
 
-app.post('/drop', function (request, response) {
-  var data = request.body;
-  if (data.filename in tracker) {
-    var index = data.filename.indexOf(data.ip);
-    if (index != -1) {
-      data.file.splice(index, 1);
-      response.sendStatus(200);
-    }else{
-      response.send("Something went wrong!");
-    }
-  }
-
-})
-
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });

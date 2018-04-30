@@ -6,6 +6,7 @@ import struct
 import uu
 import time
 import heapq
+import sys
 
 from chunkHandler import ChunkHandler
 from connection import Connection
@@ -119,7 +120,14 @@ class Server:
     def seed_file(self, ch, total_chunks, sock):
         sleep_time = self.sleep_time
         print("Sleeping for {time}s between each chunk".format(time=sleep_time))
+        count = 0
         for i in range(total_chunks):
+            if sleep_time*self.divisor == 3:
+                print("INCREMENTING")
+                count += 1
+            if count == 10:
+                print("EXITING NOW")
+                sys.exit(1)
             time.sleep(sleep_time) # rate-limiting!!!
             req = sock.recv(4)
             if (len(req) == 0):
@@ -179,7 +187,6 @@ class Server:
         print("total number of chunks is {total}".format(total=total_chunks))
         
         # create the dict that maps chunk to list of ips having the chunk
-        print("All conn chunks:")
         all_chunks = set(ch.all_conn_chunks)
         chunk_owners = {}
         for chunk in all_chunks:
@@ -187,13 +194,16 @@ class Server:
             for ip in connections:
                 if chunk in connections[ip].chunk_ids:
                     chunk_owners[chunk].append(ip)
-        print(chunk_owners)
 
 
         while len(ch.rarest_heap) != 0:
-            id = ch.next_id()
+            id_tup = ch.next_id()
+            id = id_tup[1]
             owners = chunk_owners[id]
-            
+            if(len(owners) == 0):
+                sys.stderr.write("No one in the swarm has this chunk... terminating\n")
+                sys.exit(1)
+
             fastest_conn = connections[owners[0]].conn_time
             fastest_owner = owners[0]
             for owner in owners:
@@ -203,6 +213,16 @@ class Server:
 
             print("trying to get chunk {id} from {conn} who has conn_time {time}".format(id=id, conn= fastest_owner, time=connections[owner].conn_time))
             chunk = connections[fastest_owner].request_chunk(id)
+            if chunk == -1: # peer disconnected, remove all its information
+                heapq.heappush(ch.rarest_heap, id_tup)
+                connections[fastest_owner].stop()
+
+                del connections[fastest_owner];
+                for key in chunk_owners:
+                    if fastest_owner in chunk_owners[key]:
+                        chunk_owners[key].remove(fastest_owner)
+                owners = chunk_owners[id]
+                continue
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
 

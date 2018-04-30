@@ -46,7 +46,7 @@ class ChunkHandler:
 
     def next_id(self):
         next = heapq.heappop(self.rarest_heap)
-        return next[1]
+        return next
 
     def get_chunk(self, index):
         if index >= self.get_num_up_chunks():

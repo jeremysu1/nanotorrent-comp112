@@ -5,6 +5,7 @@ import os
 import struct
 import uu
 import time
+import select
 
 # our own stats module
 import nano_stats as stats
@@ -32,6 +33,7 @@ class Connection(threading.Thread):
     def run(self):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.connect((self.host, self.port))
+        self.sock.settimeout(5)
 
         self.send_file_req(self.filename, self.sock)
         self.receive_chunk_ids()
@@ -53,8 +55,15 @@ class Connection(threading.Thread):
         msg = struct.pack('>I', id)
 
         start = time.time()
-        self.sock.send(msg) # send request for chunk
-        resp = self.sock.recv(self.chunk_size).decode('ascii') # get chunk
+
+        #ready = select.select([self.sock], [], [], 5)
+
+        try:
+            self.sock.send(msg) # send request for chunk
+            #if ready[0]:
+            resp = self.sock.recv(self.chunk_size).decode('ascii') # get chunk
+        except:
+            return -1
         end = time.time()
 
         if (self.first_req_ever):
