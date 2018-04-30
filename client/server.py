@@ -126,11 +126,11 @@ class Server:
         for i in range(total_chunks):
 
             # terminates after 10 sends
-            if sleep_time*self.divisor == 3:
-                count += 1
-            if count == 10:
-                print("Simulating disconnection, exiting now")
-                sys.exit(1)
+            #if sleep_time*self.divisor == 3:
+            #    count += 1
+            #if count == 10:
+            #    print("Simulating disconnection, exiting now")
+            #    sys.exit(1)
             time.sleep(sleep_time) # throttles the rate at which peer can send
             req = sock.recv(4)
             if (len(req) == 0):
