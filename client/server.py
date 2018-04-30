@@ -175,7 +175,7 @@ class Server:
         total_chunks = connections[ips[0]].total_chunks
         ch.total_num_chunks = total_chunks
 
-        # for each connection, create the priority queue of chunks
+        # for each connection, send chunk id to chunkHandler
         for ip in connections:
             chunk_ids = connections[ip].chunk_ids
             ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
