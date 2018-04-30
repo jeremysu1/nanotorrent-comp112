@@ -122,8 +122,7 @@ if __name__ == "__main__":
         then it loads a file from disk and then joins the swarm
     '''
     if mode == 'u':
-        # filename = input("Enter filename to upload: ")
-        filename = 'cat.mp4'
+        filename = input("Enter filename to upload: ")
         client.server.set_sleep_time(limiting_speed)
         client.load_file_from_disk(filename)
         client.join_swarm(filename)

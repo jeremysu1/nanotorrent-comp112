@@ -246,11 +246,13 @@ class Server1:
         RED   = "\033[1;31m" 
         BLUE  = "\033[1;34m"
         WHITE = "\033[1;37m"
+        GREEN = "\033[0;32m"
 
         global VIZ_LOCK
         VIZ_LOCK.acquire()
         time.sleep(0.08)
-        os.system('clear') # clears the screen        
+        os.system('clear') # clears the screen  
+        sys.stdout.write(GREEN)      
         print("Chunk availabilities:")
         print("Peer 1: ")
         print("Avg chunk retrieval time: {s}".format(s=connections[ip1].conn_time))
@@ -259,10 +261,10 @@ class Server1:
                 sys.stdout.write(RED)
                 print('*', end="")
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 print('_', end="")
 
-        sys.stdout.write(WHITE)
+        sys.stdout.write(GREEN)
         print("\n\nPeer 2: ")
         print("Avg chunk retrieval time: {s}".format(s=connections[ip2].conn_time))
         for i in range(ch.total_num_chunks):
@@ -270,10 +272,10 @@ class Server1:
                 sys.stdout.write(BLUE)
                 print('*', end="")
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 print('_', end="")
 
-        sys.stdout.write(WHITE)
+        sys.stdout.write(GREEN)
         print("\n\nDownloaded: ")
         for i in range(ch.total_num_chunks):
             if i in ch.dl_chunk_ids:
@@ -283,9 +285,9 @@ class Server1:
                     sys.stdout.write(BLUE)
                 sys.stdout.write('*')
             else:
-                sys.stdout.write(WHITE)
+                sys.stdout.write(GREEN)
                 sys.stdout.write('_')
         print("\n")
-        sys.stdout.write(WHITE)
+        sys.stdout.write(GREEN)
         VIZ_LOCK.release()
 
