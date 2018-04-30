@@ -28,10 +28,6 @@ def parse_commandline(argv):
         return argv[1], int(argv[2])
     elif (len(argv) == 3 and argv[1] == 'u'):
         return argv[1], int(argv[2])
-
-    #elif (len(argv) != 2 or (argv[1] != 'u' and argv[1] != 'd')):
-    #    err() 
-    
     return argv[1], 0
 
 def err():

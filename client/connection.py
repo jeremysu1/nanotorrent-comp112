@@ -10,7 +10,7 @@ import select
 # our own stats module
 import nano_stats as stats
 
-
+# the connection thread object for each peer
 class Connection(threading.Thread):
     def __init__(self, host, port, filename, chunk_size, host_name):
         threading.Thread.__init__(self)
@@ -20,8 +20,8 @@ class Connection(threading.Thread):
         self.chunk_size = chunk_size
         self.host_name = host_name
         self.total_chunks = -1
-        self.chunk_ids = []
-        self.done = False
+        self.chunk_ids = [] # chunk ids for this connection
+        self.done = False # pre-processing status
         self.StopEvent = threading.Event()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 
@@ -37,33 +37,23 @@ class Connection(threading.Thread):
 
         self.send_file_req(self.filename, self.sock)
         self.receive_chunk_ids()
-        self.done = True
+        self.done = True # pre-processing complete
         
         while not self.stopped():
             continue
 
         self.sock.close()
 
-                # might need to wrap ch to be thread safe
-        #ch.dl_chunk_map[id] = chunk
-        #ch.dl_chunk_ids.append(id)
 
-
+    # requests a chunk with the given id from the peer
     def request_chunk(self, id):        
-        
-        # print("Requesting chunk: {id}".format(id = id))
         msg = struct.pack('>I', id)
-
         start = time.time()
-
-        #ready = select.select([self.sock], [], [], 5)
-
         try:
             self.sock.send(msg) # send request for chunk
-            #if ready[0]:
             resp = self.sock.recv(self.chunk_size).decode('ascii') # get chunk
         except:
-            return -1
+            return -1 # signal that the connection was broken
         end = time.time()
 
         if (self.first_req_ever):

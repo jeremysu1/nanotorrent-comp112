@@ -14,6 +14,7 @@ from connection import Connection
 # globals
 CHUNKSIZE = 8192
 DIVISOR = 100
+VIZ_LOCK = threading.Lock()
     
 class Server:
     def __init__(self, host_name):
@@ -117,18 +118,19 @@ class Server:
 
         return length
 
+    # serve all chunk requestss
     def seed_file(self, ch, total_chunks, sock):
         sleep_time = self.sleep_time
         print("Sleeping for {time}s between each chunk".format(time=sleep_time))
         count = 0
         for i in range(total_chunks):
-            if sleep_time*self.divisor == 3:
-                print("INCREMENTING")
-                count += 1
-            if count == 10:
-                print("EXITING NOW")
-                sys.exit(1)
-            time.sleep(sleep_time) # rate-limiting!!!
+
+            # terminates after 10 sends
+            #if sleep_time*self.divisor == 3:
+            #    count += 1
+            #if count == 10:
+            #    sys.exit(1)
+            time.sleep(sleep_time) # throttles the rate at which peer can send
             req = sock.recv(4)
             if (len(req) == 0):
                 break
@@ -188,14 +190,23 @@ class Server:
                 if chunk in connections[ip].chunk_ids:
                     chunk_owners[chunk].append(ip)
 
+        # used for viz
+        downloaded_from = {}
+        for ip in connections:
+            downloaded_from[ip] = []
+
+        # main loop to request chunks
         while len(ch.rarest_heap) != 0:
             id_tup = ch.next_id()
             id = id_tup[1]
             owners = chunk_owners[id]
+
+            # no one has the chunk, terminate
             if(len(owners) == 0):
                 sys.stderr.write("No one in the swarm has this chunk... terminating\n")
                 sys.exit(1)
 
+            # select the fastest peer
             fastest_conn = connections[owners[0]].conn_time
             fastest_owner = owners[0]
             for owner in owners:
@@ -207,15 +218,16 @@ class Server:
             if chunk == -1: # peer disconnected, remove all its information
                 heapq.heappush(ch.rarest_heap, id_tup)
                 connections[fastest_owner].stop()
-
-                del connections[fastest_owner];
                 for key in chunk_owners:
                     if fastest_owner in chunk_owners[key]:
                         chunk_owners[key].remove(fastest_owner)
                 owners = chunk_owners[id]
                 continue
+
+            downloaded_from[fastest_owner].append(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
+            self.viz(ch, connections, downloaded_from, ips)
 
         # stop all connections because all the chunks were downloaded
         for ip in connections:
@@ -228,7 +240,67 @@ class Server:
         if (len(ch.dl_chunk_ids) == ch.total_num_chunks):
             self.write_file(ch, filename)
 
+    # visual aid called after each chunk retrieval
+    def viz(self, ch, connections, downloaded_from, ips):
+        peer_chunks = []
+        ip1 = ips[0]
+        ip2 = ips[1]
+        for ip in connections:
+            peer_chunks.append(connections[ip].chunk_ids)
+
+        RED   = "\033[1;31m" 
+        BLUE  = "\033[1;34m"
+        WHITE = "\033[1;37m"
+        GREEN = "\033[0;32m"
+        
+
+        global VIZ_LOCK
+        VIZ_LOCK.acquire()
+        time.sleep(0.08)
+        os.system('clear') # clears the screen  
+        sys.stdout.write(GREEN)      
+        print("Chunk availabilities:")
+        print("Peer 1: ")
+        print("Avg chunk retrieval time: {s}".format(s=connections[ip1].conn_time))
+        for i in range(ch.total_num_chunks):
+            if i in peer_chunks[0]:
+                sys.stdout.write(RED)
+                print('*', end="")
+            else:
+                sys.stdout.write(GREEN)
+                print('_', end="")
+
+        sys.stdout.write(GREEN)
+        print("\n\nPeer 2: ")
+        print("Avg chunk retrieval time: {s}".format(s=connections[ip2].conn_time))
+        for i in range(ch.total_num_chunks):
+            if i in peer_chunks[1]:
+                sys.stdout.write(BLUE)
+                print('*', end="")
+            else:
+                sys.stdout.write(GREEN)
+                print('_', end="")
+
+        sys.stdout.write(GREEN)
+        print("\n\nDownloaded: ")
+        for i in range(ch.total_num_chunks):
+            if i in ch.dl_chunk_ids:
+                if i in downloaded_from[ip1]:
+                    sys.stdout.write(RED)
+                else:
+                    sys.stdout.write(BLUE)
+                sys.stdout.write('*')
+            else:
+                sys.stdout.write(GREEN)
+                sys.stdout.write('_')
+        print("\n")
+        sys.stdout.write(GREEN)
+        VIZ_LOCK.release()
+
+    # writes a file to disk
     def write_file(self, ch, filename):
+        Color_Off="\033[0m"
+        sys.stdout.write(Color_Off)
         final_file = ch.stitch_chunks()
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(final_file)

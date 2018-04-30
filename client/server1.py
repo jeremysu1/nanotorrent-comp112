@@ -199,7 +199,8 @@ class Server1:
 
 
         while len(ch.rarest_heap) != 0:
-            id = ch.next_id()
+            id_tup = ch.next_id()
+            id = id_tup[1]
             owners = chunk_owners[id]
             
             fastest_conn = connections[owners[0]].conn_time
@@ -228,6 +229,8 @@ class Server1:
             self.write_file(ch, filename)
 
     def write_file(self, ch, filename):
+        Color_Off="\033[0m"
+        sys.stdout.write(Color_Off)
         final_file = ch.stitch_chunks()
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(final_file)

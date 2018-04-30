@@ -44,6 +44,7 @@ class ChunkHandler:
             heapq.heappush(h, (count_dict[chunk_id], chunk_id))
         self.rarest_heap = h
 
+    # get next rarest id from priority queue
     def next_id(self):
         next = heapq.heappop(self.rarest_heap)
         return next
@@ -67,6 +68,7 @@ class ChunkHandler:
                 if (len(chunk) != 0):
                     self.up_chunks.append(chunk)
 
+    # gives every chunk id
     def get_chunk_ids_even(self):
         ''' Returns: 
             * A list of chunk ids available to seed
@@ -82,6 +84,7 @@ class ChunkHandler:
         data = "-".join(chunk_list)
         return len(data), data
 
+    # gives the odd numbered chunk ids
     def get_chunk_ids_odd(self):
         ''' Returns: 
             * A list of chunk ids available to seed
@@ -97,7 +100,7 @@ class ChunkHandler:
         data = "-".join(chunk_list)
         return len(data), data
 
-
+    # gives the 1st quarter and second half of chunk ids for cat.mp4
     def get_chunk_ids_fast(self):
         ''' Returns: 
             * A list of chunk ids available to seed
@@ -115,6 +118,7 @@ class ChunkHandler:
         data = "-".join(chunk_list)
         return len(data), data
 
+    # gives the 2nd quarter and second half of chunk ids for cat.mp4
     def get_chunk_ids_slow(self):
         ''' Returns: 
             * A list of chunk ids available to seed
