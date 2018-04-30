@@ -228,12 +228,13 @@ class Server1:
             self.write_file(ch, filename)
 
     def write_file(self, ch, filename):
-        print("Writing file")
         final_file = ch.stitch_chunks()
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(final_file)
         uu.decode(self.torr_dir + "/" + filename + ".txt", 
             self.torr_dir + "/" + filename)
+        os.system("rm {file}".format(file = self.torr_dir + "/" + filename + ".txt"))
+        print('Download complete!')
 
     def viz(self, ch, connections, downloaded_from, ips):
         peer_chunks = []

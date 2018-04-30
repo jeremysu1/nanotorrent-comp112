@@ -156,11 +156,6 @@ class Server:
             connections[ips[i]].start()
             self.num_active_conns += 1
 
-        # start each connection
-        # for ip in connections:
-            
-            
-
         # makes sure each connection is ready
         for ip in connections:
             while connections[ip].done == False:
@@ -175,11 +170,8 @@ class Server:
             ch.all_conn_chunks =  ch.all_conn_chunks + chunk_ids
         
         ch.rarest_priority_q()
-        print("pq is {pq}".format(pq=ch.rarest_heap))
-        print("total number of chunks is {total}".format(total=total_chunks))
         
         # create the dict that maps chunk to list of ips having the chunk
-        print("All conn chunks:")
         all_chunks = set(ch.all_conn_chunks)
         chunk_owners = {}
         for chunk in all_chunks:
@@ -187,8 +179,6 @@ class Server:
             for ip in connections:
                 if chunk in connections[ip].chunk_ids:
                     chunk_owners[chunk].append(ip)
-        print(chunk_owners)
-
 
         while len(ch.rarest_heap) != 0:
             id = ch.next_id()
@@ -201,7 +191,6 @@ class Server:
                     fastest_conn = connections[owner].conn_time
                     fastest_owner = owner
 
-            print("trying to get chunk {id} from {conn} who has conn_time {time}".format(id=id, conn= fastest_owner, time=connections[owner].conn_time))
             chunk = connections[fastest_owner].request_chunk(id)
             ch.dl_chunk_map[id] = chunk
             ch.dl_chunk_ids.append(id)
@@ -218,7 +207,6 @@ class Server:
             self.write_file(ch, filename)
 
     def write_file(self, ch, filename):
-        print("writing file")
         final_file = ch.stitch_chunks()
         with open(self.torr_dir + '/' + filename + ".txt", 'w') as f:
             f.write(final_file)
